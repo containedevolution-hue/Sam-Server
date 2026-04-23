@@ -19,7 +19,17 @@ const appDataRoutes = require('./routes/app-data');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(cors({ origin: process.env.FRONTEND_URL || '*', credentials: true }));
+const ALLOWED_ORIGINS = [
+  'https://sam.containedevolution.com',
+  process.env.FRONTEND_URL,
+].filter(Boolean);
+app.use(cors({
+  origin: (origin, cb) => {
+    if (!origin || ALLOWED_ORIGINS.includes(origin)) return cb(null, true);
+    cb(new Error('CORS: origin not allowed — ' + origin));
+  },
+  credentials: true
+}));
 app.use(express.json({ limit: '12mb' }));
 
 app.get('/config.js', (req, res) => {
