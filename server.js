@@ -14,6 +14,7 @@ const samConfig = require('./lib/sam-config');
 const authRoutes = require('./routes/auth');
 const samMemoryRoutes = require('./routes/sam-memory');
 const identityRoutes = require('./routes/identity');
+const appDataRoutes = require('./routes/app-data');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -29,6 +30,7 @@ app.get('/config.js', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/sam-memory', samMemoryRoutes);
 app.use('/api/identity', identityRoutes);
+app.use('/api/app-data', appDataRoutes);
 
 app.get('/health', (req, res) => {
   const c = samConfig.get();
