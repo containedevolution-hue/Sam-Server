@@ -1,22 +1,24 @@
 const express = require('express');
-const { OAuth2Client } = require('google-auth-library');
 const pool = require('../db');
 const { signToken, requireAuth } = require('../middleware/auth');
 
 const router = express.Router();
-const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID || process.env.google_client_id);
 
-// POST /api/auth/login — accepts Google id_token, returns JWT + user
+// POST /api/auth/login — accepts Google access_token, returns JWT + user
 router.post('/login', async (req, res) => {
-  const { id_token } = req.body || {};
-  if (!id_token) return res.status(400).json({ error: 'id_token required' });
+  const { access_token } = req.body || {};
+  if (!access_token) return res.status(400).json({ error: 'access_token required' });
   try {
-    const ticket = await googleClient.verifyIdToken({
-      idToken: id_token,
-      audience: process.env.GOOGLE_CLIENT_ID || process.env.google_client_id,
+    // Verify token with Google tokeninfo
+    const r = await fetch(`https://oauth2.googleapis.com/tokeninfo?access_token=${access_token}`);
+    const info = await r.json();
+    if (info.error || !info.email) return res.status(401).json({ error: 'Invalid token', detail: info.error || 'no email' });
+
+    // Fetch user profile
+    const pr = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+      headers: { Authorization: `Bearer ${access_token}` }
     });
-    const p = ticket.getPayload();
-    if (!p?.email) return res.status(401).json({ error: 'Invalid Google token' });
+    const profile = await pr.json();
 
     // upsert user
     const upsert = await pool.query(
@@ -28,7 +30,7 @@ router.post('/login', async (req, res) => {
          avatar_url = EXCLUDED.avatar_url,
          last_login_at = NOW()
        RETURNING id, email, name, avatar_url`,
-      [p.sub, p.email, p.name || p.email, p.picture || null]
+      [info.sub, info.email, profile.name || info.email, profile.picture || null]
     );
     const user = upsert.rows[0];
     const token = signToken(user);
