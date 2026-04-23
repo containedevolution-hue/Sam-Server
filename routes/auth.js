@@ -4,7 +4,7 @@ const pool = require('../db');
 const { signToken, requireAuth } = require('../middleware/auth');
 
 const router = express.Router();
-const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID || process.env.google_client_id);
 
 // POST /api/auth/login — accepts Google id_token, returns JWT + user
 router.post('/login', async (req, res) => {
@@ -12,7 +12,8 @@ router.post('/login', async (req, res) => {
   if (!id_token) return res.status(400).json({ error: 'id_token required' });
   try {
     const ticket = await googleClient.verifyIdToken({
-      idToken: id_token, audience: process.env.GOOGLE_CLIENT_ID,
+      idToken: id_token,
+      audience: process.env.GOOGLE_CLIENT_ID || process.env.google_client_id,
     });
     const p = ticket.getPayload();
     if (!p?.email) return res.status(401).json({ error: 'Invalid Google token' });
